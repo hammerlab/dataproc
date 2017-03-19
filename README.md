@@ -2,7 +2,7 @@
 Simple python script for running a Spark job on an ephemeral Google Cloud dataproc cluster.
 
 ```bash
-$ ./dataproc
+$ ./dataproc -h
 usage: dataproc [-h] [--cluster CLUSTER] [--timestamp-cluster-name]
                 [--cores CORES] [--properties PROPS_FILES] [--jar JAR]
                 [--main MAIN] [--machine-type MACHINE_TYPE] [--dry-run]

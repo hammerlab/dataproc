@@ -29,7 +29,7 @@ parser.add_argument(
     '--cores', dest='cores',
     type=int,
     default=env('CORES', 200),
-    help='Number of CPU cores to use'
+    help='Number of CPU cores to use (default: 200)'
 )
 
 parser.add_argument(
@@ -53,7 +53,7 @@ parser.add_argument(
 parser.add_argument(
     '--machine-type', dest='machine_type',
     default='n1-standard-4',
-    help='Machine type to use'
+    help='Machine type to use (default: n1-standard-4)'
 )
 
 parser.add_argument(

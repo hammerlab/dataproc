@@ -21,8 +21,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--timestamp-cluster-name', '-t', dest='timestamp_cluster',
-    type=bool,
-    default=False,
+    action='store_true',
     help='When true, append "-<TIMESTAMP>" to the dataproc cluster name'
 )
 
@@ -76,7 +75,7 @@ if not args.cluster:
 
 machine_type = args.machine_type
 
-match = re.fullmatch('.*?(\d+)', machine_type)
+match = re.match('^.*?(\d+)$', machine_type)
 if not match:
     raise Exception('Malformed machine type? %s' % machine_type)
 
@@ -98,7 +97,7 @@ first_whitespace_re = '^(.+?)\s+(.+)$'
 def spark_prop_line_to_string(line, prefix):
     if not line:
         return ''
-    match = re.fullmatch(first_whitespace_re, line)
+    match = re.match(first_whitespace_re, line)
     if not match:
         raise Exception('Bad line: %s' % line)
 
@@ -148,7 +147,7 @@ if args.dry_run:
 print(
     "Setting up cluster '%s' with %d workers and %d pre-emptible workers" %
     (
-        args.cluster,
+        cluster,
         num_workers,
         num_preemtible_workers
     )
@@ -161,7 +160,7 @@ def run(cmd):
 
 run(
     [
-        "gcloud", "dataproc", "clusters", "create", args.cluster,
+        "gcloud", "dataproc", "clusters", "create", cluster,
         "--master-machine-type", machine_type,
         "--worker-machine-type", machine_type,
         "--num-workers", str(num_workers),
@@ -174,7 +173,7 @@ try:
     run(
         [
             "gcloud", "dataproc", "jobs", "submit", "spark",
-            "--cluster", args.cluster,
+            "--cluster", cluster,
             "--class", args.main,
             "--jars", args.jar
         ] +
@@ -186,7 +185,7 @@ finally:
     print("Tearing down cluster")
     run(
         [
-            "gcloud", "dataproc", "clusters", "delete", args.cluster
+            "gcloud", "dataproc", "clusters", "delete", cluster
         ]
     )
 

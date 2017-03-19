@@ -16,7 +16,7 @@ parser = ArgumentParser(description = "Run a Spark job on an ephemeral dataproc 
 parser.add_argument(
     '--cluster', dest='cluster',
     default=env('CLUSTER'),
-    help='Name of the dataproc cluster to use'
+    help='Name of the dataproc cluster to use; defaults to $CLUSTER env var'
 )
 
 parser.add_argument(
@@ -34,27 +34,34 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--properties', dest='props_file',
+    '--properties', '-p', dest='props_files',
     default='',
-    help='Spark properties file'
+    help='Comma-separated list of Spark properties files; merged with $SPARK_PROPS_FILES env var'
 )
 
 parser.add_argument(
     '--jar', dest='jar',
     default=env('JAR'),
-    help='URI of main app JAR'
+    help='URI of main app JAR; defaults to JAR env var'
 )
 
 parser.add_argument(
     '--main', '-m', dest='main',
     default=env('MAIN'),
-    help='JAR main class'
+    help='JAR main class; defaults to MAIN env var'
 )
 
 parser.add_argument(
     '--machine-type', dest='machine_type',
     default='n1-standard-4',
     help='Machine type to use'
+)
+
+parser.add_argument(
+    '--dry-run', '-n', dest='dry_run',
+    type=bool,
+    default=False,
+    help='When set, print some of the parsed and inferred arguments and exit without running any dataproc commands'
 )
 
 args, other_args = parser.parse_known_args(sys.argv[1:])
@@ -78,7 +85,7 @@ cores_per_machine = int(match.group(1))
 
 total_num_workers = int(ceil(args.cores / cores_per_machine))
 
-num_workers = 2  # Dataproc's minimum number of non-preemptibile
+num_workers = 2  # Dataproc's minimum number of non-preemptibile workers
 
 num_preemtible_workers = max(0, total_num_workers - num_workers)
 
@@ -111,11 +118,33 @@ def spark_props_to_string(props_file, prefix=''):
             )
         )
 
-spark_props_args = (
-    [ '--properties', spark_props_to_string(args.props_file) ]
-    if args.props_file
+spark_props_files = (
+    args.props_files.split(',')
+    if args.props_files
+    else []
+) + (
+    env('SPARK_PROPS_FILES', '').split(',')
+    if env('SPARK_PROPS_FILES', '')
     else []
 )
+
+spark_props_args = (
+    [
+        '--properties',
+        ','.join(
+            [
+                spark_props_to_string(props_file)
+                for props_file
+                in spark_props_files
+            ]
+        )
+    ]
+    if spark_props_files
+    else []
+)
+
+if args.dry_run:
+    print('Dry run: commands will only be printed to stdout')
 
 print(
     "Setting up cluster '%s' with %d workers and %d pre-emptible workers" %
@@ -126,7 +155,12 @@ print(
     )
 )
 
-check_call(
+def run(cmd):
+    print("Command: %s" % ' '.join(cmd))
+    if not args.dry_run:
+        check_call(cmd)
+
+run(
     [
         "gcloud", "dataproc", "clusters", "create", args.cluster,
         "--master-machine-type", machine_type,
@@ -138,7 +172,7 @@ check_call(
 
 try:
     print("Submitting job")
-    check_call(
+    run(
         [
             "gcloud", "dataproc", "jobs", "submit", "spark",
             "--cluster", args.cluster,
@@ -151,7 +185,7 @@ try:
     )
 finally:
     print("Tearing down cluster")
-    check_call(
+    run(
         [
             "gcloud", "dataproc", "clusters", "delete", args.cluster
         ]

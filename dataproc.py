@@ -58,9 +58,8 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--dry-run', '-n', dest='dry_run',
-    type=bool,
-    default=False,
+    '--dry-run', '-n',
+    action='store_true',
     help='When set, print some of the parsed and inferred arguments and exit without running any dataproc commands'
 )
 
@@ -156,7 +155,7 @@ print(
 )
 
 def run(cmd):
-    print("Command: %s" % ' '.join(cmd))
+    print("+%s" % ' '.join(cmd))
     if not args.dry_run:
         check_call(cmd)
 

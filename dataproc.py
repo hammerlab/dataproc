@@ -62,6 +62,12 @@ parser.add_argument(
     help='When set, print some of the parsed and inferred arguments and exit without running any dataproc commands'
 )
 
+parser.add_argument(
+    '--job-only', '-j',
+    action='store_true',
+    help='When set, skip cluster setup/teardown commands; just run a job'
+)
+
 args, other_args = parser.parse_known_args(sys.argv[1:])
 
 if not args.jar:
@@ -144,29 +150,32 @@ spark_props_args = (
 if args.dry_run:
     print('Dry run: commands will only be printed to stdout')
 
-print(
-    "Setting up cluster '%s' with %d workers and %d pre-emptible workers" %
-    (
-        cluster,
-        num_workers,
-        num_preemtible_workers
-    )
-)
 
 def run(cmd):
     print("+%s" % ' '.join(cmd))
     if not args.dry_run:
         check_call(cmd)
 
-run(
-    [
-        "gcloud", "dataproc", "clusters", "create", cluster,
-        "--master-machine-type", machine_type,
-        "--worker-machine-type", machine_type,
-        "--num-workers", str(num_workers),
-        "--num-preemptible-workers", str(num_preemtible_workers)
-    ]
-)
+
+if not args.job_only:
+    print(
+        "Setting up cluster '%s' with %d workers and %d pre-emptible workers" %
+        (
+            cluster,
+            num_workers,
+            num_preemtible_workers
+        )
+    )
+
+    run(
+        [
+            "gcloud", "dataproc", "clusters", "create", cluster,
+            "--master-machine-type", machine_type,
+            "--worker-machine-type", machine_type,
+            "--num-workers", str(num_workers),
+            "--num-preemptible-workers", str(num_preemtible_workers)
+        ]
+    )
 
 try:
     print("Submitting job")
@@ -182,11 +191,12 @@ try:
         other_args
     )
 finally:
-    print("Tearing down cluster")
-    run(
-        [
-            "gcloud", "dataproc", "clusters", "delete", cluster
-        ]
-    )
+    if not args.job_only:
+        print("Tearing down cluster")
+        run(
+            [
+                "gcloud", "dataproc", "clusters", "delete", cluster
+            ]
+        )
 
 

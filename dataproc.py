@@ -26,7 +26,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--cores', dest='cores',
+    '--cores', '-c', dest='cores',
     type=int,
     default=env('CORES', 200),
     help='Number of CPU cores to use (default: 200)'

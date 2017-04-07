@@ -8,6 +8,7 @@ from subprocess import check_call
 import sys
 from time import time
 
+
 def env(key, default=None):
     return environ.get(key, default)
 
@@ -68,7 +69,18 @@ parser.add_argument(
     help='When set, skip cluster setup/teardown commands; just run a job'
 )
 
-args, other_args = parser.parse_known_args(sys.argv[1:])
+args = sys.argv[1:]
+job_args = []
+try:
+    args_separator = args.index('--')
+    cluster_args = args[:args_separator]
+    job_args = args[(args_separator + 1):]
+except ValueError:
+    cluster_args = args
+
+args, more_job_args = parser.parse_known_args(cluster_args)
+
+job_args += more_job_args
 
 if not args.jar:
     raise Exception('Required: --jar option or JAR env var')
@@ -108,6 +120,7 @@ def spark_prop_line_to_string(line, prefix):
         raise Exception('Bad line: %s' % line)
 
     return '%s%s=%s' % (prefix, match.group(1), match.group(2))
+
 
 def spark_props_to_string(props_file, prefix=''):
     with open(props_file, 'r') as fd:
@@ -173,7 +186,8 @@ if not args.job_only:
             "--master-machine-type", machine_type,
             "--worker-machine-type", machine_type,
             "--num-workers", str(num_workers),
-            "--num-preemptible-workers", str(num_preemtible_workers)
+            "--num-preemptible-workers", str(num_preemtible_workers),
+            "--tags", "http-server"
         ]
     )
 
@@ -188,7 +202,7 @@ try:
         ] +
         spark_props_args +
         [ '--' ] +
-        other_args
+        job_args
     )
 finally:
     if not args.job_only:
@@ -198,5 +212,3 @@ finally:
                 "gcloud", "dataproc", "clusters", "delete", cluster
             ]
         )
-
-
